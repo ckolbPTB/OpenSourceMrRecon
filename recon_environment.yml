@@ -12,8 +12,14 @@ dependencies:
   - matplotlib
   - scikit-image
   - ipykernel
+  - Cython 
+  - Pillow 
+  - wget 
+  - six  
   - pip:
     - ismrmrd
+    - deprecation
+    - git+https://github.com/ismrmrd/ismrmrd-python-tools.git@master#egg=ismrmrd-python-tools
 
   
     

@@ -37,7 +37,7 @@ BUILD_FLAGS="\
  -DGadgetron_USE_CUDA=OFF\
  -DUSE_SYSTEM_SWIG=ON\
  -DUSE_NiftyPET=OFF\
- -DBUILD_siemens_to_ismrmrd=OFF -DBUILD_pet_rd_tools=OFF"
+ -DBUILD_siemens_to_ismrmrd=ON -DBUILD_pet_rd_tools=OFF"
 EXTRA_BUILD_FLAGS="-DBUILD_CIL=ON"
 
 git clone "$SIRF_SB_URL" --recursive "$INSTALL_DIR"/SIRF-SuperBuild

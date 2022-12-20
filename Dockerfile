@@ -18,9 +18,9 @@ ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 COPY bart.sh .
 RUN bash bart.sh
 RUN rm bart.sh
-ENV PATH=$/bart-0.7.00:$PATH
 ENV TOOLBOX_PATH=/bart-0.7.00
-ENV PYTHONPATH=${TOOLBOX_PATH}/python:$PYTHONPATH
+ENV PATH=$TOOLBOX_PATH:$PATH
+ENV PYTHONPATH=$TOOLBOX_PATH/python:$PYTHONPATH
 
 # install anaconda
 ENV CONDA_DIR /opt/conda
@@ -32,7 +32,30 @@ RUN conda update -n base -c defaults conda
 # create conda environment
 COPY recon_environment.yml .
 RUN conda env create --file recon_environment.yml
-ENV PATH=$/opt/conda/bin:$PATH
+ENV PATH=/opt/conda/bin:$PATH
+
+# install gadgetron and sirf
+COPY sirf_gadgetron.sh .
+RUN bash sirf_gadgetron.sh
+RUN rm sirf_gadgetron.sh
+RUN chmod -R go+rwX /opt/SIRF-SuperBuild/INSTALL
+ENV PATH=/opt/SIRF-SuperBuild/INSTALL/bin:$PATH
+ENV LD_LIBRARY_PATH=/opt/SIRF-SuperBuild/INSTALL/lib:$LD_LIBRARY_PATH
+ENV PYTHONPATH=/opt/SIRF-SuperBuild/INSTALL/python:$PYTHONPATH
+
+# install julia and mrireco.jl
+COPY mrireco_jl.sh .
+RUN bash mrireco_jl.sh
+RUN rm mrireco_jl.sh
+ENV PATH=/julia-1.8.3/bin:$PATH
+COPY mrireco_jl_pkg.jl .
+RUN julia mrireco_jl_pkg.jl
+RUN rm mrireco_jl_pkg.jl
+
+# reconstruction code
+COPY recon_scripts/run_open_source_recon.py .
+COPY recon_scripts/read_ismrmrd.py .
+COPY recon_scripts/recon_mrireco_jl_sense.jl .
 
 
 
