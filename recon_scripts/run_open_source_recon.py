@@ -23,8 +23,8 @@ import read_ismrmrd
 #%% PARAMETERS
 
 # Raw data file
-pname = '/recon_output/simone_data_1/ChristophKolbitsch_blackBlood_raw/blackBlood/'
-fname = ('bb_dat_7.h5', 'bb_dat_12.h5', 'bb_dat_15.h5',)
+pname = '/example_data/'
+fname = ('2d_tse_bb_scan_1.h5', '2d_tse_bb_scan_2.h5', '2d_tse_bb_scan_3.h5',)
 
 for scans in range(len(fname)):
         
@@ -77,7 +77,7 @@ for scans in range(len(fname)):
     #%% MRIRECO_JL
 
     # Call Julia reconstruction script
-    mrireco_str = 'julia recon_mrireco_jl_sense.jl ' + pname + ' ' + fname[scans]
+    mrireco_str = 'julia /example_code/recon_mrireco_jl_sense.jl ' + pname + ' ' + fname[scans]
     status = spr.run(mrireco_str , shell=True, stdout=spr.PIPE)
 
     assert status.returncode == 0, 'MriReco.jl reconstruction failed'

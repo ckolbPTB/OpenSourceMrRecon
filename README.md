@@ -20,7 +20,7 @@ docker build -t os_recon .
 
 Here we are tagging the image with *os_recon*. Feel free to use any other tag, but make sure you select the correct image when starting the container.  
 
-The build process will take some time (on a normal laptop around 1 hour) and the final image will be around 9GB in size.
+The build process will take some time (on a normal laptop around 1.5 hours) and the final image will be around 9GB in size.
 
 ## Start container
 Once the build is successfully finished, start the container in interactive mode

@@ -17,6 +17,7 @@ dependencies:
   - wget 
   - six  
   - pip:
+    - zenodo_get
     - ismrmrd
     - deprecation
     - git+https://github.com/ismrmrd/ismrmrd-python-tools.git@master#egg=ismrmrd-python-tools

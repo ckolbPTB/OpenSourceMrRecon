@@ -52,10 +52,16 @@ COPY mrireco_jl_pkg.jl .
 RUN julia mrireco_jl_pkg.jl
 RUN rm mrireco_jl_pkg.jl
 
+# example raw data
+COPY download_data.sh .
+RUN bash download_data.sh
+
 # reconstruction code
-COPY recon_scripts/run_open_source_recon.py .
-COPY recon_scripts/read_ismrmrd.py .
-COPY recon_scripts/recon_mrireco_jl_sense.jl .
+# reconstruction code
+RUN mkdir /example_code
+COPY recon_scripts/run_open_source_recon.py /example_code
+COPY recon_scripts/read_ismrmrd.py /example_code
+COPY recon_scripts/recon_mrireco_jl_sense.jl /example_code
 
 
 
