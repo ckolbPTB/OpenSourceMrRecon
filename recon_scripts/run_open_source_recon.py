@@ -23,10 +23,8 @@ import read_ismrmrd
 #%% PARAMETERS
 
 # Raw data file
-pname = '/recon_scripts/simone_data_1/ChristophKolbitsch_blackBlood_raw/blackBlood/'
+pname = '/recon_output/simone_data_1/ChristophKolbitsch_blackBlood_raw/blackBlood/'
 fname = ('bb_dat_7.h5', 'bb_dat_12.h5', 'bb_dat_15.h5',)
-fname = ('bb_dat_15.h5',)
-
 
 for scans in range(len(fname)):
         
@@ -67,7 +65,7 @@ for scans in range(len(fname)):
     kdat = read_ismrmrd.read_ismrmrd(pname + fname[scans])
     
     # Calculate coil sensitivity maps
-    sens = bart(1, 'ecalib -m1', kdat)
+    sens = bart(1, 'ecalib -m1 -c0.001', kdat)
 
     # Image reconstruction
     img = bart(1, 'pics -r0 -i5', kdat, sens)
@@ -79,7 +77,7 @@ for scans in range(len(fname)):
     #%% MRIRECO_JL
 
     # Call Julia reconstruction script
-    mrireco_str = 'julia /recon_scripts/recon_mrireco_jl_sense.jl ' + pname + ' ' + fname[scans]
+    mrireco_str = 'julia recon_mrireco_jl_sense.jl ' + pname + ' ' + fname[scans]
     status = spr.run(mrireco_str , shell=True, stdout=spr.PIPE)
 
     assert status.returncode == 0, 'MriReco.jl reconstruction failed'
@@ -156,7 +154,7 @@ for scans in range(len(fname)):
         if scans == 0:
             img = img[::-1, ::-1]
         if scans == 2:
-            img = img[::-1,:]
+            img = img[:,::-1]
         ax[scans,ind].imshow(img, cmap='gray', vmax=0.1)
         ax[scans,ind].set_xticks([])
         ax[scans,ind].set_yticks([])
@@ -164,4 +162,4 @@ for scans in range(len(fname)):
             ax[scans,ind].set_title(rec_method[ind])
 plt.show()
 
-plt.savefig('/recon_scripts/open_source_recon.png')
+plt.savefig('/recon_output/open_source_recon.png')

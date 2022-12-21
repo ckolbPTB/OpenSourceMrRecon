@@ -14,11 +14,11 @@ RUN bash ismrmrd.sh
 RUN rm ismrmrd.sh
 ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 
-# install bart 0.7
+# install bart 0.8
 COPY bart.sh .
 RUN bash bart.sh
 RUN rm bart.sh
-ENV TOOLBOX_PATH=/bart-0.7.00
+ENV TOOLBOX_PATH=/bart-0.8.00
 ENV PATH=$TOOLBOX_PATH:$PATH
 ENV PYTHONPATH=$TOOLBOX_PATH/python:$PYTHONPATH
 
