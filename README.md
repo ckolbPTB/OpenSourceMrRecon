@@ -1,6 +1,6 @@
 # Open source image reconstruction for MRI
 
-With this container you can start to reconstruct MR data straight away - it has Gadgetron, BART, MRIReco.jl and SIRF and all their dependencies installed. 
+With this container you can start to reconstruct MR data straight away - it has [Gadgetron](https://github.com/gadgetron/gadgetron), [BART](http://mrirecon.github.io/bart/), [MRIReco.jl](https://github.com/MagneticResonanceImaging/MRIReco.jl) and [SIRF](https://github.com/SyneRBI/SIRF) and all their dependencies installed. 
 
 ## Build docker image
 In order to build the docker image, clone this repository
@@ -53,7 +53,7 @@ gadgetron &
 
 Run the python script with all reconstructions
 ```
-python run_open_source_recon.py
+python example_code/run_open_source_recon.py
 ```
 
 You will see lots of output in the terminal but that's all fine. Once the script has finished you should find the figure *open_source_recon.png* in *full_path_to_your_folder*.
