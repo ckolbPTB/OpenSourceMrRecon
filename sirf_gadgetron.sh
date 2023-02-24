@@ -8,14 +8,10 @@ APT_GET_INSTALL="apt-get install -yq --no-install-recommends"
 
 ${APT_GET_INSTALL} libhdf5-serial-dev libboost-dev libboost-all-dev libfftw3-dev h5utils  jq  \
   hdf5-tools libopenblas-dev libxml2-dev  libfreetype6-dev       \
-  libxslt-dev            \
-  libarmadillo-dev       \
-  libace-dev             \
-  liblapack-dev          \
+  libxslt-dev libarmadillo-dev  libace-dev liblapack-dev          \
   liblapacke-dev         \
   libplplot-dev          \
   libdcmtk-dev           \
-  libpugixml-dev         \
   libgflags-dev          \
   libssl-dev             \
   libcurl4-openssl-dev   \

@@ -57,7 +57,6 @@ COPY download_data.sh .
 RUN bash download_data.sh
 
 # reconstruction code
-# reconstruction code
 RUN mkdir /example_code
 COPY recon_scripts/run_open_source_recon.py /example_code
 COPY recon_scripts/read_ismrmrd.py /example_code
