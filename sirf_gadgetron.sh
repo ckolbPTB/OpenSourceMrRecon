@@ -21,7 +21,7 @@ ${APT_GET_INSTALL} libhdf5-serial-dev libboost-dev libboost-all-dev libfftw3-dev
 
 # SIRF-SuperBuild 
 SIRF_SB_URL="https://github.com/SyneRBI/SIRF-SuperBuild"
-SIRF_SB_TAG="master"
+SIRF_SB_TAG="v3.4.0"
 NUM_PARALLEL_BUILDS="20"
 INSTALL_DIR="/opt"
 

@@ -140,6 +140,8 @@ for scans in range(len(fname)):
 
     rec_img.append(np.abs(img))
     rec_method.append('SIRF')
+    
+    print(f'{scans} reconstructed\n\n')
 
 
     #%% VISUALISATION
