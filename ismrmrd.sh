@@ -10,7 +10,7 @@ ${APT_GET_INSTALL} libboost-all-dev xsdcxx libxerces-c-dev \
     libhdf5-serial-dev h5utils hdf5-tools libtinyxml-dev \
     libxml2-dev libxslt1-dev  libpugixml-dev
 
-git clone https://github.com/ismrmrd/ismrmrd.git --depth 1
+git clone https://github.com/ismrmrd/ismrmrd.git --depth 1 --branch ${ISMRMRD_TAG}
 
 cd ismrmrd
 mkdir build

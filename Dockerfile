@@ -1,7 +1,13 @@
 ARG BASE_IMAGE=ubuntu:22.04
 FROM ${BASE_IMAGE} as base
 
+ENV http_proxy "http://webproxy.berlin.ptb.de:8080"
+ENV https_proxy "http://webproxy.berlin.ptb.de:8080"
+
 ARG DEBIAN_FRONTEND=noninteractive
+
+# set versions
+ARG ISMRMRD_TAG="v1.7.0"
 
 # install ubuntu dependencies
 COPY ubuntu.sh .
@@ -51,10 +57,6 @@ ENV PATH=/julia-1.8.3/bin:$PATH
 COPY mrireco_jl_pkg.jl .
 RUN julia mrireco_jl_pkg.jl
 RUN rm mrireco_jl_pkg.jl
-
-# example raw data
-COPY download_data.sh .
-RUN bash download_data.sh
 
 # reconstruction code
 RUN mkdir /example_code
