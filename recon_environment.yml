@@ -1,0 +1,18 @@
+name: reco_env
+channels:
+  - conda-forge
+dependencies: 
+  - python=3.12
+  - pip
+  - numpy
+  - cython
+  - scipy
+  - h5py
+  - matplotlib
+  - scikit-image
+  - ipykernel
+  - cupy
+  - sigpy
+  - pip:
+    - ismrmrd
+    - git+https://github.com/ismrmrd/ismrmrd-python-tools.git@master#egg=ismrmrd-python-tools
