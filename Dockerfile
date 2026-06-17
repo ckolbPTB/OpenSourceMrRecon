@@ -30,6 +30,11 @@ COPY mrpro.sh .
 RUN bash mrpro.sh
 RUN rm mrpro.sh
 
+# install sigpy
+COPY sigpy.sh .
+RUN bash sigpy.sh
+RUN rm sigpy.sh
+
 # install bart 1.0
 COPY bart.sh .
 RUN bash bart.sh
@@ -42,12 +47,15 @@ ENV PYTHONPATH=$BART_TOOLBOX_PATH/python:$PYTHONPATH
 COPY mrireco_jl.sh .
 RUN bash mrireco_jl.sh
 RUN rm mrireco_jl.sh
-ENV PATH=/julia-1.8.3/bin:$PATH
+ENV PATH=/julia-1.10.11/bin:$PATH
 COPY mrireco_jl_pkg.jl .
 RUN julia mrireco_jl_pkg.jl
 RUN rm mrireco_jl_pkg.jl
 
-
+# reconstruction code
+RUN mkdir /compare_recon_packages
+COPY recon_scripts/mrpro_paper_julia.jl /compare_recon_packages
+COPY recon_scripts/mrpro_paper_reco.py /compare_recon_packages
 
 ENTRYPOINT ["/bin/bash"]
 

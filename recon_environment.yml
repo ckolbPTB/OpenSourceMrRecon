@@ -11,8 +11,6 @@ dependencies:
   - matplotlib
   - scikit-image
   - ipykernel
-  - cupy
-  - sigpy
   - pip:
     - ismrmrd
     - git+https://github.com/ismrmrd/ismrmrd-python-tools.git@master#egg=ismrmrd-python-tools

@@ -1,13 +1,9 @@
 using Pkg
 
-Pkg.add("MRIReco")
-using MRIReco
-isinstalled(pkg::String) = any(x -> x.name == pkg && x.is_direct_dep, values(Pkg.dependencies()))
+pkgs = ["CUDA", "NPZ", "HDF5", "BenchmarkTools"]
+Pkg.add(pkgs)
 
-# Install required packages
-for P in ["HTTP", "PyPlot", "NPZ", "MRIReco", "MRIFiles", "MRICoilSensitivities"]
-  !isinstalled(P) && Pkg.add(P)
-end
+Pkg.add(name="MRIReco", version="0.9.2")
+Pkg.add(name="RegularizedLeastSquares", version="0.16.12")
 
-using NPZ
-using MRIReco, MRIFiles, MRICoilSensitivities
+using MRIReco, CUDA, RegularizedLeastSquares, HDF5, NPZ, BenchmarkTools
