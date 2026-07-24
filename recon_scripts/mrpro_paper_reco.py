@@ -33,11 +33,13 @@ def kdata_ktraj_to_bart(kdata):
     
     
 @contextmanager
-def timer(name="", times=None):
-    torch.cuda.synchronize()  
+def timer(name="", times=None, run_device='cpu'):
+    if run_device == 'gpu':
+        torch.cuda.synchronize()  
     start = time.perf_counter()
     yield
-    torch.cuda.synchronize()
+    if run_device == 'gpu':
+        torch.cuda.synchronize()
     elapsed = time.perf_counter() - start
     if times is not None:
         times.append(elapsed)
@@ -82,8 +84,8 @@ def plot_reconstructions(reconstructions_list, vmin=None, vmax=None, figsize=(16
             reconstructions_dict[recon.raw_file] = {}
         reconstructions_dict[recon.raw_file][recon.method] = recon
         
-    raw_files = sorted(reconstructions_dict.keys())
-    raw_files_str = ['2D Radial multi-coil', '3D Cartesian single-coil']
+    raw_files = sorted(reconstructions_dict.keys(), reverse=True)
+    raw_files_str = ['3D Cartesian single-coil', '2D Radial multi-coil']
     methods = ['MRpro', 'BART', 'Sigpy', 'MriReco']
     
     fig, axes = plt.subplots(len(raw_files), len(methods), figsize=figsize)
@@ -108,18 +110,18 @@ def plot_reconstructions(reconstructions_list, vmin=None, vmax=None, figsize=(16
             
             # Top: method name (first row only)
             if row == 0:
-                ax.set_title(method, fontsize=12, fontweight='bold')
+                ax.set_title(method, fontsize=20, fontweight='bold')
             
             # Left: raw file name (first column only)
             if col == 0:
-                ax.set_ylabel(raw_file_str, fontsize=11, fontweight='bold')
+                ax.set_ylabel(raw_file_str, fontsize=18, fontweight='bold')
             
             # Info box
             if method != 'MRpro':
-                ax.text(0.98, 0.98, f"Diff: {recon.relative_rmse*100:.1f}%",
+                ax.text(0.98, 0.98, f"Diff to MRpro: {recon.relative_rmse*100:.1f}%",
                         transform=ax.transAxes, ha='right', va='top',
                         bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
-                        fontsize=10)
+                        fontsize=14)
             
             ax.set_xticks([])
             ax.set_yticks([])
@@ -139,7 +141,7 @@ def circ_mask(size=256, radius=128):
 # %%
 pname = '/data/'
 
-run_device = 'gpu'
+run_device = 'cpu'
 
 # RESULTS
 reconstruction_results = []
@@ -164,6 +166,7 @@ for fname in [pname + 'cart_Ruben_R1_R2_9033_IR_T1w_R1.h5', pname + '20250210-15
         nruns = 10
         ndim_traj = 2
         disp_x = 0
+        
         
     mask = 1 #circ_mask()
     csm = CsmData.from_kdata_inati(kdata[0])
@@ -213,7 +216,7 @@ for fname in [pname + 'cart_Ruben_R1_R2_9033_IR_T1w_R1.h5', pname + '20250210-15
 
     times = []
     for _ in range(nruns):
-        with timer("mrpro", times=times):     
+        with timer("mrpro", times=times, run_device=run_device):     
             idata = recon(kdata)
     times = np.array(times)
     print(f"median: {np.median(times):.3f}s | min: {times.min():.3f}s | max: {times.max():.3f}s\n\n")
@@ -228,7 +231,7 @@ for fname in [pname + 'cart_Ruben_R1_R2_9033_IR_T1w_R1.h5', pname + '20250210-15
     reconstruction_results.append(Reconstruction(img_mrpro[disp_x], relative_rmse(img_mrpro, img_mrpro), times, 'MRpro', fname, run_device == 'gpu'))
     
     # MRIRECO_JL
-    mrireco_str = 'julia /compare_recon_packages/mrpro_paper_julia.jl ' + fname
+    mrireco_str = 'julia /code/mrpro_paper_julia.jl ' + fname
     status = spr.run(mrireco_str , shell=True)
     assert status.returncode == 0, 'MriReco.jl reconstruction failed'
     print(np.load(pname + 'out.npz'))
@@ -252,10 +255,10 @@ for fname in [pname + 'cart_Ruben_R1_R2_9033_IR_T1w_R1.h5', pname + '20250210-15
     times = []
     for _ in range(nruns):
         if run_device == 'gpu':
-            with timer("bart", times=times): 
+            with timer("bart", times=times, run_device=run_device): 
                 img = bart(1, f'pics -r0 -g -i{n_iterations} -t', ktraj_bart, kdat_bart, csm_bart)
         else:
-            with timer("bart", times=times): 
+            with timer("bart", times=times, run_device=run_device): 
                 img = bart(1, f'pics -r0 -i{n_iterations} -t', ktraj_bart, kdat_bart, csm_bart)
     times = np.array(times)
     print(f"median: {np.median(times):.3f}s | min: {times.min():.3f}s | max: {times.max():.3f}s\n\n")
@@ -285,7 +288,7 @@ for fname in [pname + 'cart_Ruben_R1_R2_9033_IR_T1w_R1.h5', pname + '20250210-15
             max_iter=n_iterations,
             device=device_id,
         )
-        with timer("sigpy", times=times):     
+        with timer("sigpy", times=times, run_device=run_device):     
             img = recon.run()
     times = np.array(times)
     print(f"median: {np.median(times):.3f}s | min: {times.min():.3f}s | max: {times.max():.3f}s\n\n")
@@ -311,5 +314,4 @@ for recon in reconstruction_results:
 fig = plot_reconstructions(reconstruction_results)
 plt.savefig('/data/compare_to_packages.png', dpi=300, bbox_inches='tight')
 plt.show()
-    
 
