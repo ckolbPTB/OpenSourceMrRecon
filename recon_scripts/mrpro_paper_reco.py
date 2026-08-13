@@ -86,11 +86,12 @@ def plot_reconstructions(reconstructions_list, vmin=None, vmax=None, figsize=(16
         
     raw_files = sorted(reconstructions_dict.keys(), reverse=True)
     raw_files_str = ['3D Cartesian single-coil', '2D Radial multi-coil']
+    raw_label_str = ['a)', 'b)']
     methods = ['MRpro', 'BART', 'Sigpy', 'MriReco']
     
     fig, axes = plt.subplots(len(raw_files), len(methods), figsize=figsize)
     
-    for row, (raw_file, raw_file_str) in enumerate(zip(raw_files, raw_files_str, strict=True)):
+    for row, (raw_file, raw_str) in enumerate(zip(raw_files, raw_label_str, strict=True)):
         for col, method in enumerate(methods):
             recon = reconstructions_dict[raw_file][method]
             ax = axes[row, col]
@@ -103,6 +104,7 @@ def plot_reconstructions(reconstructions_list, vmin=None, vmax=None, figsize=(16
                 disp_img = disp_img[80:240, 80:240]
                 disp_img = np.rot90(disp_img, -1)
             else:
+                disp_img = disp_img[:, 7:7+136]
                 disp_img = np.rot90(disp_img, 1)
             
             # Plot with consistent scaling
@@ -110,18 +112,18 @@ def plot_reconstructions(reconstructions_list, vmin=None, vmax=None, figsize=(16
             
             # Top: method name (first row only)
             if row == 0:
-                ax.set_title(method, fontsize=20, fontweight='bold')
+                ax.set_title(method, fontsize=26)
             
             # Left: raw file name (first column only)
             if col == 0:
-                ax.set_ylabel(raw_file_str, fontsize=18, fontweight='bold')
+                ax.text(-0.05, 0.98, raw_str, fontsize=40, transform=ax.transAxes, ha='right', va='top')
             
             # Info box
             if method != 'MRpro':
-                ax.text(0.98, 0.98, f"Diff to MRpro: {recon.relative_rmse*100:.1f}%",
-                        transform=ax.transAxes, ha='right', va='top',
-                        bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
-                        fontsize=14)
+                ax.text(0.98, 0.02, f"Diff to MRpro: {recon.relative_rmse*100:.1f}%",
+                        transform=ax.transAxes, ha='right', va='bottom',
+                        bbox=dict(boxstyle='square', facecolor='black', alpha=0.7),
+                        fontsize=18, color='white')
             
             ax.set_xticks([])
             ax.set_yticks([])
@@ -230,6 +232,7 @@ for fname in [pname + 'cart_Ruben_R1_R2_9033_IR_T1w_R1.h5', pname + '20250210-15
     
     reconstruction_results.append(Reconstruction(img_mrpro[disp_x], relative_rmse(img_mrpro, img_mrpro), times, 'MRpro', fname, run_device == 'gpu'))
     
+        
     # MRIRECO_JL
     mrireco_str = 'julia /code/mrpro_paper_julia.jl ' + fname
     status = spr.run(mrireco_str , shell=True)
@@ -251,7 +254,7 @@ for fname in [pname + 'cart_Ruben_R1_R2_9033_IR_T1w_R1.h5', pname + '20250210-15
 
     print(f'bart {np.max(ktraj_bart)}')
 
-     # BART
+    # BART
     times = []
     for _ in range(nruns):
         if run_device == 'gpu':
@@ -312,6 +315,7 @@ for recon in reconstruction_results:
     print(f'{recon.method}: {recon.median_time:.4f}s (cuda = {recon.cuda})')
     
 fig = plot_reconstructions(reconstruction_results)
-plt.savefig('/data/compare_to_packages.png', dpi=300, bbox_inches='tight')
+plt.savefig('/data/compare_to_packages.pdf', dpi=300, bbox_inches='tight')
 plt.show()
+print('version 2.0')
 
