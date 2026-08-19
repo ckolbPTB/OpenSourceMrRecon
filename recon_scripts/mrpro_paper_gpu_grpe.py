@@ -53,13 +53,30 @@ import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 import time
+import argparse
 
 import mrpro
 import numpy as np
 import torch
 from einops import rearrange
 
-data_folder = Path('/data/')
+data_folder = Path('/example_data/')
+output_folder = Path('/output/')
+
+# %% Select device
+parser = argparse.ArgumentParser(description="Run script on CPU or GPU")
+parser.add_argument(
+    "device",
+    choices=["cpu", "cuda"],
+    default="cpu",
+    nargs="?",  # makes it optional
+    help="Device to run on: 'cpu' or 'cuda' (default: cpu)"
+)
+args = parser.parse_args()
+
+device = torch.device(args.device)
+print(f"Running on {device}")
+
 # %% [markdown]
 # ### Motion-corrupted image reconstruction
 # As a first step we will reconstruct the image using all the acquired data which will lead to an image corrupted by
@@ -72,7 +89,7 @@ data_folder = Path('/data/')
 kdata = mrpro.data.KData.from_file(
     data_folder / 'grpe_t1_free_breathing.mrd',
     trajectory=mrpro.data.traj_calculators.KTrajectoryRpe(angle=torch.pi * 0.618034),
-)
+).to(device)
 
 # Calculate coil maps
 csm_maps = mrpro.data.CsmData.from_kdata_inati(kdata, smoothing_width=3, downsampled_size=64)
@@ -81,7 +98,7 @@ csm_maps = mrpro.data.CsmData.from_kdata_inati(kdata, smoothing_width=3, downsam
 print('Running iterative SENSE....', end=" ")
 iterative_sense = mrpro.algorithms.reconstruction.IterativeSENSEReconstruction(kdata, csm=csm_maps)
 start = time.perf_counter()
-img = iterative_sense(kdata)
+img = iterative_sense(kdata).to(device)
 print(f'{(time.perf_counter() - start):.3f}')
 del iterative_sense
 img = img.cpu()
@@ -112,7 +129,7 @@ def show_views(*images: torch.Tensor, ylabels: Sequence[str] | None = None) -> N
 # %%
 # Visualize anatomical views of 3D image
 show_views(img.rss())
-plt.savefig(data_folder / 'grpe_it_sense.png', dpi=300)
+plt.savefig(output_folder / 'grpe_it_sense.png', dpi=300)
 
 
 # %% [markdown]
@@ -164,11 +181,11 @@ kdata = kdata.rearrange('... k2 k1 k0 -> ... 1 (k2 k1) k0')
 respiratory_navigator = get_respiratory_self_navigator_from_grpe(kdata)
 
 plt.figure()
-acquisition_time = kdata.header.acq_info.acquisition_time_stamp.squeeze()
-plt.plot(acquisition_time - acquisition_time.min(), respiratory_navigator)
+acquisition_time = kdata.header.acq_info.acquisition_time_stamp.squeeze().cpu()
+plt.plot(acquisition_time - acquisition_time.min(), respiratory_navigator.cpu())
 plt.xlabel('Acquisition time (s)')
 plt.ylabel('Navigator signal (a.u.)')
-plt.savefig(data_folder / 'grpe_nav.png', dpi=300)
+plt.savefig(output_folder / 'grpe_nav.png', dpi=300)
 
 # %% [markdown]
 # ### 2. Split data into different breathing states
@@ -189,7 +206,7 @@ kdata_resp_resolved = kdata[..., navigator_idx, :]
 print('Running iterative SENSE on motion states....', end=" ")
 recon_resp_resolved = mrpro.algorithms.reconstruction.IterativeSENSEReconstruction(kdata_resp_resolved, csm=csm_maps)
 start = time.perf_counter()
-img_resp_resolved = recon_resp_resolved(kdata_resp_resolved)
+img_resp_resolved = recon_resp_resolved(kdata_resp_resolved).to(device)
 print(f'{(time.perf_counter() - start):.3f}')
 img_resp_resolved = img_resp_resolved.cpu()
 
@@ -215,7 +232,7 @@ def show_motion_states(image: torch.Tensor, ylabel: str | None = None, slice_idx
 
 # %%
 show_motion_states(img_resp_resolved.rss(), ylabel='Iterative SENSE')
-plt.savefig(data_folder / 'grpe_motion_states.png', dpi=300)
+plt.savefig(output_folder / 'grpe_motion_states.png', dpi=300)
 
 # %% [markdown]
 # ### 4. Estimate the motion fields from the dynamic images
@@ -231,7 +248,7 @@ plt.savefig(data_folder / 'grpe_motion_states.png', dpi=300)
 
 # %%
 mf = torch.as_tensor(np.load(data_folder / 'grpe_t1_free_breathing_displacement_fields.npy'), dtype=torch.float32)
-motion_op = mrpro.operators.GridSamplingOp.from_displacement(mf[..., 2], mf[..., 1], mf[..., 0])
+motion_op = mrpro.operators.GridSamplingOp.from_displacement(mf[..., 2], mf[..., 1], mf[..., 0]).to(device)
 
 # %% [markdown]
 # ### 5. Use the motion fields to obtain a motion-corrected image
@@ -248,7 +265,7 @@ motion_op = mrpro.operators.GridSamplingOp.from_displacement(mf[..., 2], mf[...,
 
 # %%
 # Create acquisition operator
-fourier_op = recon_resp_resolved.fourier_op.cpu()
+fourier_op = recon_resp_resolved.fourier_op
 csm_op = mrpro.operators.SensitivityOp(csm_maps)
 averaging_op = mrpro.operators.AveragingOp(dim=0)
 acquisition_operator = fourier_op @ motion_op @ csm_op @ averaging_op.H
@@ -259,8 +276,8 @@ operator = acquisition_operator.gram
 # This is equivalent to running the CG algorithm with H = A^H DCF A and b = A^H DCF y
 # for a single iteration.
 if recon_resp_resolved.dcf_op is not None:
-    (u,) = (acquisition_operator.H @ recon_resp_resolved.dcf_op.cpu())(kdata_resp_resolved.data)
-    (v,) = (acquisition_operator.H @ recon_resp_resolved.dcf_op.cpu() @ acquisition_operator)(u)
+    (u,) = (acquisition_operator.H @ recon_resp_resolved.dcf_op)(kdata_resp_resolved.data)
+    (v,) = (acquisition_operator.H @ recon_resp_resolved.dcf_op @ acquisition_operator)(u)
     u_flat = u.flatten(start_dim=-3)
     v_flat = v.flatten(start_dim=-3)
     initial_value = (
@@ -273,9 +290,9 @@ else:
 print('Running MCIR....', end=" ")
 start = time.perf_counter()
 (img_mcir,) = mrpro.algorithms.optimizers.cg(
-    operator,
+    operator.to(device),
     right_hand_side,
-    initial_value=initial_value,
+    initial_value=initial_value.to(device),
     max_iterations=10,
     tolerance=0.0,
 )
@@ -285,7 +302,7 @@ img_mcir = img_mcir.cpu()
 
 # %%
 show_views(img.rss(), img_mcir.abs(), ylabels=('Uncorrected', 'MCIR'))
-plt.savefig(data_folder / 'grpe_mcir.png', dpi=300)
+plt.savefig(output_folder / 'grpe_mcir.png', dpi=300)
 
 # %% [markdown]
 # We have used a rather small number of CG iterations here to make sure the reconstruction does not take too long.

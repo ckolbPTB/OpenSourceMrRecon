@@ -52,10 +52,17 @@ COPY mrireco_jl_pkg.jl .
 RUN julia mrireco_jl_pkg.jl
 RUN rm mrireco_jl_pkg.jl
 
+# download data
+RUN mkdir /example_data
+COPY download_data.sh .
+RUN bash download_data.sh
+RUN rm download_data.sh
+
 # reconstruction code
-RUN mkdir /compare_recon_packages
-COPY recon_scripts/mrpro_paper_julia.jl /compare_recon_packages
-COPY recon_scripts/mrpro_paper_reco.py /compare_recon_packages
+RUN mkdir /recon_scripts
+COPY recon_scripts/mrpro_paper_julia.jl /recon_scripts
+COPY recon_scripts/mrpro_paper_reco.py /recon_scripts
+COPY recon_scripts/mrpro_paper_gpu_grpe.py /recon_scripts
 
 ENTRYPOINT ["/bin/bash"]
 

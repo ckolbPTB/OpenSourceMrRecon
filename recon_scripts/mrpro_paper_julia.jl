@@ -3,7 +3,7 @@ using Pkg
 Pkg.add("CUDA")
 using MRIReco, CUDA, RegularizedLeastSquares, HDF5, NPZ, BenchmarkTools
 
-fname = "/data/data.h5"
+fname = "/example_data/data.h5"
 fid    = h5open(fname, "r")
 kdat = read(fid["kdat"])
 ktraj   = read(fid["ktraj"])
@@ -18,7 +18,8 @@ n_iterations = read(fid["n_iterations"])
 device = read(fid["device"])
 close(fid)
 
-if device == "gpu"
+@show device; flush(stdout)
+if device == "cuda"
     @show CUDA.functional(); flush(stdout)
     @show CUDA.device(); flush(stdout)
 end
@@ -72,11 +73,11 @@ params[:iterations] = n_iterations
 params[:solver] = CGNR
 params[:reg] = L2Regularization(0.0)
 params[:senseMaps] = csm
-if device == "gpu"
-    params[:gpu] = true
+if device == "cuda"
+    params[:arrayType] = CuArray
 end
-img = reconstruction(acqData, params)
 
+img = reconstruction(acqData, params)
 @show size(img); flush(stdout) 
 
 BenchmarkTools.DEFAULT_PARAMETERS.seconds = 300
@@ -85,6 +86,6 @@ println(result)
 
 # Write reconstructed image to file
 times = result.times ./ 1e9  # convert ns to seconds
-npzwrite("/data/out.npz", Dict("img" => img, "times" => times))
+npzwrite("/example_data/out.npz", Dict("img" => img, "times" => times))
 
 

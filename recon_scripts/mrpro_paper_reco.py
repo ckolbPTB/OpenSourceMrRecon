@@ -1,4 +1,5 @@
 # %%
+import argparse
 import matplotlib.pyplot as plt
 from dataclasses import dataclass
 import subprocess as spr
@@ -25,6 +26,18 @@ from mrpro.operators import CartesianSamplingOp
 from bart import bart
 
 
+parser = argparse.ArgumentParser(description="Run script on CPU or CUDA")
+parser.add_argument(
+    "device",
+    choices=["cpu", "cuda"],
+    default="cpu",
+    nargs="?",  # makes it optional
+    help="Device to run on: 'cpu' or 'cuda' (default: cpu)"
+)
+run_device = parser.parse_args().device
+print(f"Running on {run_device}")
+
+
 
 def kdata_ktraj_to_bart(kdata):
     kdat = rearrange(kdata.data, '1 coils z y x -> 1 x (y z) coils')
@@ -34,11 +47,11 @@ def kdata_ktraj_to_bart(kdata):
     
 @contextmanager
 def timer(name="", times=None, run_device='cpu'):
-    if run_device == 'gpu':
+    if run_device == 'cuda':
         torch.cuda.synchronize()  
     start = time.perf_counter()
     yield
-    if run_device == 'gpu':
+    if run_device == 'cuda':
         torch.cuda.synchronize()
     elapsed = time.perf_counter() - start
     if times is not None:
@@ -84,8 +97,7 @@ def plot_reconstructions(reconstructions_list, vmin=None, vmax=None, figsize=(16
             reconstructions_dict[recon.raw_file] = {}
         reconstructions_dict[recon.raw_file][recon.method] = recon
         
-    raw_files = sorted(reconstructions_dict.keys(), reverse=True)
-    raw_files_str = ['3D Cartesian single-coil', '2D Radial multi-coil']
+    raw_files = sorted(reconstructions_dict.keys())
     raw_label_str = ['a)', 'b)']
     methods = ['MRpro', 'BART', 'Sigpy', 'MriReco']
     
@@ -131,35 +143,23 @@ def plot_reconstructions(reconstructions_list, vmin=None, vmax=None, figsize=(16
     plt.tight_layout(rect=[0, 0, 1, 0.97])
     return fig
 
-def circ_mask(size=256, radius=128):
-    # Create circular mask
-    center = size // 2
-
-    y, x = np.ogrid[:size, :size]
-    distance = np.sqrt((x - center)**2 + (y - center)**2)
-    mask = distance <= radius
-    return mask
-
 # %%
-pname = '/data/'
-
-run_device = 'cpu'
+pname = '/example_data/'
 
 # RESULTS
 reconstruction_results = []
 
-for fname in [pname + 'cart_Ruben_R1_R2_9033_IR_T1w_R1.h5', pname + '20250210-154640,PTBMR06-73,20250210_radial_2D_cine_640mm_3600spokes_heart_rate65,13633,226,dep13622_with_traj.mrd']:
+for fname in [pname + 'IR_T1w_R1.h5', pname + 'scanner1_vol2_radial_cine.mrd']:
 
     # PREP
-    if 'cart' in fname:
+    if 'IR_T1w_R1.h5' in fname:
         kdata = KData.from_file(fname, KTrajectoryCartesian())
-        #kdata = kdata.remove_readout_os()
         n_iterations = 1
         n_iterations_mrireco = 1
         nruns = 10
         ndim_traj = 3
         disp_x = 25
-    else:
+    else: 
         kdata = KData.from_file(fname, KTrajectoryIsmrmrd())
         kdata = kdata[...,400:400+640,:]
         kdata.data *= 100
@@ -169,8 +169,6 @@ for fname in [pname + 'cart_Ruben_R1_R2_9033_IR_T1w_R1.h5', pname + '20250210-15
         ndim_traj = 2
         disp_x = 0
         
-        
-    mask = 1 #circ_mask()
     csm = CsmData.from_kdata_inati(kdata[0])
 
     # BART
@@ -208,11 +206,9 @@ for fname in [pname + 'cart_Ruben_R1_R2_9033_IR_T1w_R1.h5', pname + '20250210-15
         f.create_dataset('device', data=run_device)
         
         
-
-
     # MRPRO
     recon = IterativeSENSEReconstruction(kdata, csm=csm, n_iterations=n_iterations)
-    if run_device == 'gpu':
+    if run_device == 'cuda':
         recon.cuda()
         kdata = kdata.cuda()
 
@@ -228,13 +224,13 @@ for fname in [pname + 'cart_Ruben_R1_R2_9033_IR_T1w_R1.h5', pname + '20250210-15
     img_mrpro /= np.max(img_mrpro)
     plt.figure()
     plt.imshow(img_mrpro[disp_x])
-    plt.savefig(pname + 'mrpro.png', dpi=300)
+    plt.savefig('/output/mrpro.png', dpi=300)
     
-    reconstruction_results.append(Reconstruction(img_mrpro[disp_x], relative_rmse(img_mrpro, img_mrpro), times, 'MRpro', fname, run_device == 'gpu'))
+    reconstruction_results.append(Reconstruction(img_mrpro[disp_x], relative_rmse(img_mrpro, img_mrpro), times, 'MRpro', fname, run_device == 'cuda'))
     
         
     # MRIRECO_JL
-    mrireco_str = 'julia /code/mrpro_paper_julia.jl ' + fname
+    mrireco_str = 'julia /recon_scripts/mrpro_paper_julia.jl'
     status = spr.run(mrireco_str , shell=True)
     assert status.returncode == 0, 'MriReco.jl reconstruction failed'
     print(np.load(pname + 'out.npz'))
@@ -247,9 +243,9 @@ for fname in [pname + 'cart_Ruben_R1_R2_9033_IR_T1w_R1.h5', pname + '20250210-15
     
     plt.figure()
     plt.imshow(img[disp_x])
-    plt.savefig(pname + 'mrireco.png', dpi=300)
+    plt.savefig('/output/mrireco.png', dpi=300)
 
-    reconstruction_results.append(Reconstruction(img[disp_x], relative_rmse(img_mrpro*mask, img), times, 'MriReco', fname, run_device == 'gpu'))
+    reconstruction_results.append(Reconstruction(img[disp_x], relative_rmse(img_mrpro, img), times, 'MriReco', fname, run_device == 'cuda'))
 
 
     print(f'bart {np.max(ktraj_bart)}')
@@ -257,7 +253,7 @@ for fname in [pname + 'cart_Ruben_R1_R2_9033_IR_T1w_R1.h5', pname + '20250210-15
     # BART
     times = []
     for _ in range(nruns):
-        if run_device == 'gpu':
+        if run_device == 'cuda':
             with timer("bart", times=times, run_device=run_device): 
                 img = bart(1, f'pics -r0 -g -i{n_iterations} -t', ktraj_bart, kdat_bart, csm_bart)
         else:
@@ -272,15 +268,15 @@ for fname in [pname + 'cart_Ruben_R1_R2_9033_IR_T1w_R1.h5', pname + '20250210-15
     img /= np.max(img)
     plt.figure()
     plt.imshow(img[disp_x])
-    plt.savefig(pname + 'bart.png', dpi=300)
+    plt.savefig('/output/bart.png', dpi=300)
 
-    reconstruction_results.append(Reconstruction(img[disp_x], relative_rmse(img_mrpro, img), times, 'BART', fname, run_device == 'gpu'))
+    reconstruction_results.append(Reconstruction(img[disp_x], relative_rmse(img_mrpro, img), times, 'BART', fname, run_device == 'cuda'))
 
 
     print(f'sigpy {np.max(ktraj_sigpy)}')
 
     # SIGPY
-    device_id = 0 if run_device == 'gpu' else -1
+    device_id = 0 if run_device == 'cuda' else -1
     times = []
     for _ in range(nruns):
         recon = mr.app.SenseRecon(
@@ -296,7 +292,7 @@ for fname in [pname + 'cart_Ruben_R1_R2_9033_IR_T1w_R1.h5', pname + '20250210-15
     times = np.array(times)
     print(f"median: {np.median(times):.3f}s | min: {times.min():.3f}s | max: {times.max():.3f}s\n\n")
 
-    if run_device == 'gpu':
+    if run_device == 'cuda':
         img = img.get()
     img = np.squeeze(np.abs(img))
     img = img[...,None] if img.ndim == 2 else img
@@ -304,9 +300,9 @@ for fname in [pname + 'cart_Ruben_R1_R2_9033_IR_T1w_R1.h5', pname + '20250210-15
     img /= np.max(img)
     plt.figure()
     plt.imshow(img[disp_x])
-    plt.savefig(pname + 'sigpy.png', dpi=300)
+    plt.savefig('/output/sigpy.png', dpi=300)
 
-    reconstruction_results.append(Reconstruction(img[disp_x], relative_rmse(img_mrpro, img), times, 'Sigpy', fname, run_device == 'gpu'))
+    reconstruction_results.append(Reconstruction(img[disp_x], relative_rmse(img_mrpro, img), times, 'Sigpy', fname, run_device == 'cuda'))
 
 for recon in reconstruction_results:
     print(recon)
@@ -315,7 +311,6 @@ for recon in reconstruction_results:
     print(f'{recon.method}: {recon.median_time:.4f}s (cuda = {recon.cuda})')
     
 fig = plot_reconstructions(reconstruction_results)
-plt.savefig('/data/compare_to_packages.pdf', dpi=300, bbox_inches='tight')
+plt.savefig('/output/compare_to_packages.pdf', dpi=300, bbox_inches='tight')
 plt.show()
-print('version 2.0')
 
